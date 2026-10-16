@@ -164,4 +164,51 @@ class CoroutineTest extends TestCase
 
         $this->assertSame(3, $promise->wait());
     }
+
+    public function testCannotResolveWithItself(): void
+    {
+        $promise = new Promise();
+        $coroutine = Coroutine::of(function () use ($promise): \Generator {
+            yield $promise;
+        });
+
+        try {
+            $coroutine->resolve($coroutine);
+            $this->fail('Expected LogicException');
+        } catch (\LogicException $e) {
+            $this->assertSame('Cannot fulfill or reject a promise with a promise that depends on it', $e->getMessage());
+        }
+
+        $this->assertSame(PromiseInterface::PENDING, $coroutine->getState());
+        $promise->resolve('foo');
+        $this->assertSame('foo', $coroutine->wait());
+    }
+
+    public function testForeignCoroutineCannotCancelCurrentPromise(): void
+    {
+        $yielded = new ThirdPartyPromise();
+        $coroutine = Coroutine::of(function () use ($yielded): \Generator {
+            yield $yielded;
+        });
+        $current = PropertyHelper::get($coroutine, 'currentPromise');
+        $exception = null;
+
+        \Swoole\Coroutine\run(function () use ($coroutine, &$exception): void {
+            try {
+                $coroutine->cancel();
+            } catch (\LogicException $e) {
+                $exception = $e;
+            }
+        });
+
+        $this->assertInstanceOf(\LogicException::class, $exception);
+        $this->assertStringContainsString('cannot call cancel() on an unfinished promise owned by coroutine -1', $exception->getMessage());
+        $this->assertSame(0, $current->cancelCalls);
+        $this->assertSame(PromiseInterface::PENDING, $coroutine->getState());
+
+        $coroutine->cancel();
+
+        $this->assertSame(1, $current->cancelCalls);
+        $this->assertSame(PromiseInterface::REJECTED, $coroutine->getState());
+    }
 }

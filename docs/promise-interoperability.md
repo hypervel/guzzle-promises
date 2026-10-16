@@ -52,6 +52,17 @@ callbacks asynchronously. When waiting on promises synchronously, the task queue
 is automatically run while resolving the blocking promise and forwarded Guzzle
 promises.
 
+> [!IMPORTANT]
+> In this fork, a pending promise belongs to the coroutine that created it, so
+> its callbacks and the queue that runs them must stay in that coroutine. The
+> event loop examples below work when promises are created, settled and drained
+> in one execution context, including code outside Swoole coroutines. Do not
+> drain another coroutine's promise work: coroutine applications use a separate
+> task queue for each coroutine, and a foreign promise must run its callbacks in
+> the coroutine that owns the Guzzle promise following it. See
+> [Coroutine Ownership](promise-api.md#coroutine-ownership) and
+> [Task Queue](promise-api.md#task-queue).
+
 When using promises asynchronously in an event loop, run the task queue on loop
 ticks. If you do not run the task queue, Guzzle promise callbacks may remain
 queued.

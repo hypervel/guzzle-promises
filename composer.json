@@ -1,6 +1,6 @@
 {
-    "name": "guzzlehttp/promises",
-    "description": "Guzzle promises library",
+    "name": "hypervel/guzzle-promises",
+    "description": "Hypervel's fork of the Guzzle promises library",
     "license": "MIT",
     "keywords": [
         "promise"
@@ -28,11 +28,15 @@
         }
     ],
     "require": {
-        "php": "^7.4 || ^8.0"
+        "php": "^8.4",
+        "ext-swoole": "*"
     },
     "require-dev": {
         "bamarni/composer-bin-plugin": "^1.8.2",
         "phpunit/phpunit": "^9.6.34"
+    },
+    "replace": {
+        "guzzlehttp/promises": "self.version"
     },
     "autoload": {
         "psr-4": {

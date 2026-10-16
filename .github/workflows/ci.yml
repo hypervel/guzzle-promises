@@ -12,16 +12,10 @@ jobs:
   build-lowest-version:
     name: Build lowest version
     runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/hypervel/components-ci:php8.4-swoole6.3.0-rc1
 
     steps:
-      - name: Set up PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '7.4'
-          ini-values: error_reporting=E_ALL
-          coverage: 'none'
-          extensions: mbstring
-
       - name: Checkout code
         uses: actions/checkout@v6
 
@@ -34,21 +28,15 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/hypervel/components-ci:php${{ matrix.php }}-swoole6.3.0-rc1
     strategy:
       fail-fast: false
       max-parallel: 10
       matrix:
-        php: ['7.4', '8.0', '8.1', '8.2', '8.3', '8.4', '8.5', '8.6']
+        php: ['8.4', '8.5']
 
     steps:
-      - name: Set up PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: ${{ matrix.php }}
-          ini-values: error_reporting=E_ALL
-          coverage: 'none'
-          extensions: mbstring
-
       - name: Checkout code
         uses: actions/checkout@v6
 

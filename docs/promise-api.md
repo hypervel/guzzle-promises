@@ -1,6 +1,6 @@
 # Promise API
 
-This reference summarizes the public API provided by `guzzlehttp/promises`.
+This reference summarizes the public API provided by `hypervel/guzzle-promises`.
 Promise APIs are documented for static analysis as
 `PromiseInterface<TValue, TReason>`. `TValue` is the fulfillment value type and
 `TReason` is the rejection reason type. This typing is PHPDoc-only and does not
@@ -44,6 +44,24 @@ A promise has the following methods:
 - `getState() : string` returns `pending`, `fulfilled`, or `rejected`.
 - `resolve($value = null) : void` fulfills the promise with `$value`, or with `null` if no value is given.
 - `reject($reason) : void` rejects the promise with `$reason`.
+
+## Coroutine Ownership
+
+A pending `Promise` belongs to the Swoole coroutine that created it, or to code
+running outside coroutines if it was created there. While the promise is
+pending, only its owner may call `then()`, `otherwise()`, `wait()`, `cancel()`,
+`resolve()`, or `reject()`. A call from another coroutine throws a
+`LogicException` and leaves the promise unchanged. A `Coroutine` belongs to the
+coroutine that created it in the same way.
+
+Resolving or rejecting a promise with a pending `Promise` or `Coroutine` that
+another coroutine owns throws the same exception and also leaves the promise
+unchanged. A promise that was resolved with a pending promise stays owned until
+that promise settles.
+
+Once a promise and every promise it was resolved with have settled, any
+coroutine may call `then()`, `otherwise()`, or `wait()` on it. Create and finish
+an operation in one coroutine, then share its settled result.
 
 ## Settled Promises
 
@@ -143,7 +161,7 @@ $promise = Each::of($promises, $onFulfilled, $onRejected, ['concurrency' => 5]);
 - `EachPromise` is the configurable class behind `Each`; use it directly when you need `fulfilled`, `rejected`, and `concurrency` keys in one configuration array.
 
 The concurrency options limit lazy promise creation. For HTTP request
-concurrency, use `GuzzleHttp\Pool` from `guzzlehttp/guzzle`.
+concurrency, use `GuzzleHttp\Pool` from `hypervel/guzzle`.
 
 ## Coroutine
 
@@ -157,6 +175,16 @@ fulfilled value, and rejections are thrown into the generator.
 `TaskQueue` executes queued tasks in FIFO order. The default queue runs at
 process shutdown unless disabled, and `wait()` drains the queue while resolving
 the promise being waited on.
+
+`ScopedTaskQueueInterface` extends `TaskQueueInterface`. A scoped task queue
+runs tasks per execution scope, such as a coroutine, and cancels pending work
+tracked in a scope when that scope ends. Code that starts pending work, such as
+an HTTP transfer, passes its promise to `track()` when `Utils::queue()` returns
+a scoped task queue. The default `TaskQueue` does not implement this interface.
+
+Coroutine applications need a separate queue for each coroutine. Promise
+callbacks settle promises in the coroutine that drains the queue, and only the
+coroutine that owns a pending promise may settle it.
 
 ## Exceptions
 

@@ -1,9 +1,10 @@
 # Promise Quick Start
 
 This guide covers the common promise operations needed when using
-`guzzlehttp/promises` directly: registering callbacks, resolving or rejecting
-promises, waiting synchronously, composing chains, and using generator-based
-flows. For the full public surface, see the [Promise API](promise-api.md).
+`hypervel/guzzle-promises` directly: registering callbacks, resolving or
+rejecting promises, waiting synchronously, composing chains, and using
+generator-based flows. For the full public surface, see the
+[Promise API](promise-api.md).
 
 A *promise* represents the eventual result of an asynchronous operation. The
 primary way of interacting with a promise is through its `then` method, which

@@ -146,6 +146,9 @@ final class Coroutine implements PromiseInterface
     public function cancel(): void
     {
         if (isset($this->currentPromise)) {
+            // The current promise may come from another library, so refuse
+            // another coroutine before it cancels anything.
+            Promise::_assertOwner($this->result, 'cancel');
             $this->currentPromise->cancel();
         }
 
@@ -191,5 +194,15 @@ final class Coroutine implements PromiseInterface
         } catch (\Throwable $throwable) {
             $this->result->reject($throwable);
         }
+    }
+
+    /**
+     * @internal
+     *
+     * @return Promise<TValue, TReason>
+     */
+    public function _getResult(): PromiseInterface
+    {
+        return $this->result;
     }
 }

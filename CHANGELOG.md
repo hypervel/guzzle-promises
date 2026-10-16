@@ -1,5 +1,10 @@
 # CHANGELOG
 
+This is upstream's changelog for `guzzlehttp/promises`. Changes made in this
+fork are listed in its
+[GitHub releases](https://github.com/hypervel/guzzle-promises/releases) and the
+README's [Hypervel Fork](README.md#hypervel-fork) section.
+
 
 ## 3.0.2 - 2026-08-24
 
