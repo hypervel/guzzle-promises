@@ -6,11 +6,13 @@ namespace GuzzleHttp\Promise\Tests;
 
 use GuzzleHttp\Promise as P;
 use GuzzleHttp\Promise\CancellationException;
+use GuzzleHttp\Promise\Coroutine;
 use GuzzleHttp\Promise\FulfilledPromise;
 use GuzzleHttp\Promise\Promise;
 use GuzzleHttp\Promise\PromiseInterface;
 use GuzzleHttp\Promise\RejectedPromise;
 use GuzzleHttp\Promise\RejectionException;
+use GuzzleHttp\Promise\TaskQueue;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -869,5 +871,353 @@ class PromiseTest extends TestCase
         }
 
         $this->assertSame(2, $exceptionCount);
+    }
+
+    /**
+     * @dataProvider foreignCallProvider
+     */
+    public function testForeignCoroutineCannotUsePendingPromise(string $method, array $args): void
+    {
+        $calls = [];
+        $owner = $foreign = $before = $after = $exception = null;
+
+        self::runInCoroutine(function () use ($method, $args, &$calls, &$owner, &$foreign, &$before, &$after, &$exception): void {
+            $owner = \Swoole\Coroutine::getCid();
+            $p = new Promise(
+                function () use (&$calls): void {
+                    $calls[] = 'wait';
+                },
+                function () use (&$calls): void {
+                    $calls[] = 'cancel';
+                }
+            );
+            $p->then(function (string $v) use (&$calls): void {
+                $calls[] = 'then:'.$v;
+            });
+            $before = self::promiseState($p);
+
+            \Swoole\Coroutine::create(function () use ($p, $method, $args, &$foreign, &$exception): void {
+                $foreign = \Swoole\Coroutine::getCid();
+                try {
+                    $p->{$method}(...$args);
+                } catch (\LogicException $e) {
+                    $exception = $e;
+                }
+            });
+
+            $after = self::promiseState($p);
+            $p->resolve('owner');
+            P\Utils::queue()->run();
+        });
+
+        $this->assertInstanceOf(\LogicException::class, $exception);
+        $this->assertSame(
+            "Coroutine {$foreign} cannot call {$method}() on an unfinished promise owned by coroutine {$owner}. Create and finish the operation in the same coroutine, then share its settled result.",
+            $exception->getMessage()
+        );
+        $this->assertSame($before, $after);
+        $this->assertSame(['then:owner'], $calls);
+    }
+
+    public static function foreignCallProvider(): array
+    {
+        return [
+            ['then', [function (): void {}]],
+            ['wait', []],
+            ['cancel', []],
+            ['resolve', ['foreign']],
+            ['reject', ['foreign']],
+        ];
+    }
+
+    public function testSettledPromiseCanBeUsedInOtherCoroutines(): void
+    {
+        $results = [];
+
+        self::runInCoroutine(function () use (&$results): void {
+            $fulfilled = new Promise();
+            $fulfilled->resolve('foo');
+            $rejected = new Promise();
+            $rejected->reject('bar');
+
+            \Swoole\Coroutine::create(function () use ($fulfilled, $rejected, &$results): void {
+                $results[] = $fulfilled->then(function (string $v): string {
+                    return $v.'!';
+                })->wait();
+                $results[] = $rejected->otherwise(function (string $v): string {
+                    return $v.'?';
+                })->wait();
+                $results[] = $fulfilled->wait();
+            });
+        });
+
+        $this->assertSame(['foo!', 'bar?', 'foo'], $results);
+    }
+
+    public function testForeignCoroutineKeepsSettledPromiseRules(): void
+    {
+        $results = [];
+
+        self::runInCoroutine(function () use (&$results): void {
+            $p = new Promise();
+            $p->resolve('foo');
+
+            \Swoole\Coroutine::create(function () use ($p, &$results): void {
+                $p->resolve('foo');
+                $p->cancel();
+                foreach (['resolve', 'reject'] as $method) {
+                    try {
+                        $p->{$method}('bar');
+                    } catch (\LogicException $e) {
+                        $results[] = $e->getMessage();
+                    }
+                }
+            });
+            $results[] = $p->wait();
+        });
+
+        $this->assertSame([
+            'The promise is already fulfilled.',
+            'Cannot change a fulfilled promise to rejected',
+            'foo',
+        ], $results);
+    }
+
+    public function testPromiseResolvedWithPendingPromiseStaysOwnedUntilItSettles(): void
+    {
+        $exception = $result = null;
+
+        self::runInCoroutine(function () use (&$exception, &$result): void {
+            $inner = new Promise();
+            $middle = new Promise();
+            $outer = new Promise();
+            $middle->resolve($inner);
+            $outer->resolve($middle);
+
+            \Swoole\Coroutine::create(function () use ($outer, &$exception): void {
+                try {
+                    $outer->then();
+                } catch (\LogicException $e) {
+                    $exception = $e;
+                }
+            });
+
+            $inner->resolve('foo');
+
+            \Swoole\Coroutine::create(function () use ($outer, &$result): void {
+                $result = $outer->wait();
+            });
+        });
+
+        $this->assertInstanceOf(\LogicException::class, $exception);
+        $this->assertStringContainsString('cannot call then() on an unfinished promise', $exception->getMessage());
+        $this->assertSame('foo', $result);
+    }
+
+    public function testCannotSettleWithPendingPromiseOwnedByAnotherCoroutine(): void
+    {
+        $messages = [];
+        $pendingOwner = $caller = $pendingHandlers = $stillPending = $result = null;
+
+        self::runInCoroutine(function () use (&$messages, &$pendingOwner, &$caller, &$pendingHandlers, &$stillPending, &$result): void {
+            $pendingOwner = \Swoole\Coroutine::getCid();
+            $pending = new Promise();
+
+            \Swoole\Coroutine::create(function () use ($pending, &$messages, &$caller, &$pendingHandlers, &$stillPending, &$result): void {
+                $caller = \Swoole\Coroutine::getCid();
+                $p = new Promise();
+                $chained = $p->then(function (string $v): string {
+                    return $v.'!';
+                });
+
+                foreach (['resolve', 'reject'] as $method) {
+                    try {
+                        $p->{$method}($pending);
+                    } catch (\LogicException $e) {
+                        $messages[] = $e->getMessage();
+                    }
+                }
+
+                $pendingHandlers = PropertyHelper::get($pending, 'handlers');
+                $stillPending = P\Is::pending($p);
+                $p->resolve('foo');
+                $result = $chained->wait();
+            });
+
+            $pending->resolve('done');
+        });
+
+        $message = "Coroutine {$caller} cannot settle a promise with an unfinished promise owned by coroutine {$pendingOwner}. Create and finish the operation in the same coroutine, then share its settled result.";
+        $this->assertSame([$message, $message], $messages);
+        $this->assertSame([], $pendingHandlers);
+        $this->assertTrue($stillPending);
+        $this->assertSame('foo!', $result);
+    }
+
+    public function testCannotResolveWithPendingCoroutineOwnedByAnotherCoroutine(): void
+    {
+        $exception = $stillPending = $result = null;
+
+        self::runInCoroutine(function () use (&$exception, &$stillPending, &$result): void {
+            $pending = new Promise();
+            $coroutine = Coroutine::of(function () use ($pending): \Generator {
+                yield $pending;
+            });
+
+            \Swoole\Coroutine::create(function () use ($coroutine, &$exception, &$stillPending, &$result): void {
+                $p = new Promise();
+                $chained = $p->then(function (string $v): string {
+                    return $v.'!';
+                });
+
+                try {
+                    $p->resolve($coroutine);
+                } catch (\LogicException $e) {
+                    $exception = $e;
+                }
+
+                $stillPending = P\Is::pending($p);
+                $p->resolve('foo');
+                $result = $chained->wait();
+            });
+
+            $pending->resolve('done');
+            P\Utils::queue()->run();
+        });
+
+        $this->assertInstanceOf(\LogicException::class, $exception);
+        $this->assertStringContainsString('cannot settle a promise with an unfinished promise owned by coroutine', $exception->getMessage());
+        $this->assertTrue($stillPending);
+        $this->assertSame('foo!', $result);
+    }
+
+    public function testCannotSettleWithPromiseOwnedByAnotherCoroutineThatWaitsOnThirdPartyPromise(): void
+    {
+        $messages = $usable = [];
+        $result = null;
+
+        self::runInCoroutine(function () use (&$messages, &$usable, &$result): void {
+            $thirdParty = new NotPromiseInstance();
+            $wrapper = new Promise();
+            $wrapper->resolve($thirdParty);
+
+            \Swoole\Coroutine::create(function () use ($wrapper, &$messages, &$usable): void {
+                foreach (['resolve', 'reject'] as $method) {
+                    foreach ([true, false] as $withHandler) {
+                        $p = new Promise();
+                        $chained = $withHandler ? $p->then() : $p;
+
+                        try {
+                            $p->{$method}($wrapper);
+                        } catch (\LogicException $e) {
+                            $messages[] = $e->getMessage();
+                        }
+
+                        $p->resolve($method);
+                        $usable[] = $chained->wait();
+                    }
+                }
+            });
+
+            $thirdParty->resolve('foo');
+
+            \Swoole\Coroutine::create(function () use ($wrapper, &$result): void {
+                $p = new Promise();
+                $chained = $p->then(function (string $v): string {
+                    return $v.'!';
+                });
+                $p->resolve($wrapper);
+                $result = $chained->wait();
+            });
+        });
+
+        $this->assertCount(4, $messages);
+        foreach ($messages as $message) {
+            $this->assertStringContainsString('cannot settle a promise with an unfinished promise owned by coroutine', $message);
+        }
+        $this->assertSame(['resolve', 'resolve', 'reject', 'reject'], $usable);
+        $this->assertSame('foo!', $result);
+    }
+
+    public function testPendingThirdPartyPromiseKeepsAdoptingPromiseOwned(): void
+    {
+        $refused = [];
+        $state = $result = null;
+
+        self::runInCoroutine(function () use (&$refused, &$state, &$result): void {
+            $p = new Promise();
+            $thirdParty = new NotPromiseInstance();
+            $p->resolve($thirdParty);
+            $state = $p->getState();
+
+            \Swoole\Coroutine::create(function () use ($p, &$refused): void {
+                foreach (['then', 'wait'] as $method) {
+                    try {
+                        $p->{$method}();
+                    } catch (\LogicException $e) {
+                        $refused[] = $method;
+                    }
+                }
+            });
+
+            $thirdParty->resolve('foo');
+
+            \Swoole\Coroutine::create(function () use ($p, &$result): void {
+                $result = $p->then(function (string $v): string {
+                    return $v.'!';
+                })->wait();
+            });
+        });
+
+        $this->assertSame(PromiseInterface::FULFILLED, $state);
+        $this->assertSame(['then', 'wait'], $refused);
+        $this->assertSame('foo!', $result);
+    }
+
+    public function testPendingPromiseCreatedOutsideCoroutinesCannotBeSettledInside(): void
+    {
+        $p = new Promise();
+        $exception = null;
+
+        self::runInCoroutine(function () use ($p, &$exception): void {
+            try {
+                $p->resolve('foo');
+            } catch (\LogicException $e) {
+                $exception = $e;
+            }
+        });
+
+        $this->assertInstanceOf(\LogicException::class, $exception);
+        $this->assertStringContainsString('cannot call resolve() on an unfinished promise owned by coroutine -1', $exception->getMessage());
+        $this->assertTrue(P\Is::pending($p));
+        $p->resolve('bar');
+        $this->assertSame('bar', $p->wait());
+    }
+
+    /**
+     * Runs the callback in a coroutine scheduler with its own task queue. A
+     * coroutine that drains the shared queue would also run tasks left by
+     * other tests, which settle promises owned outside coroutines.
+     */
+    private static function runInCoroutine(callable $callback): void
+    {
+        $queue = P\Utils::queue();
+        P\Utils::queue(new TaskQueue(false));
+
+        try {
+            \Swoole\Coroutine\run($callback);
+        } finally {
+            P\Utils::queue($queue);
+        }
+    }
+
+    private static function promiseState(Promise $p): array
+    {
+        $state = [];
+        foreach (['state', 'result', 'handlers', 'waitFn', 'cancelFn', 'waitList'] as $property) {
+            $state[$property] = PropertyHelper::get($p, $property);
+        }
+
+        return $state;
     }
 }

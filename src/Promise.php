@@ -7,6 +7,22 @@ namespace GuzzleHttp\Promise;
 /**
  * Promises/A+ implementation that avoids recursion when possible.
  *
+ * A pending Promise belongs to the Swoole coroutine that created it, or to code
+ * running outside coroutines if it was created there. While the promise is
+ * pending, only its owner may call then(), otherwise(), wait(), cancel(),
+ * resolve(), or reject(). A call from another coroutine throws a LogicException
+ * and leaves the promise unchanged. A Coroutine belongs to the coroutine that
+ * created it in the same way.
+ *
+ * Resolving or rejecting a promise with a pending Promise or Coroutine that
+ * another coroutine owns throws the same exception and also leaves the promise
+ * unchanged. A promise that was resolved with a pending promise stays owned
+ * until that promise settles.
+ *
+ * Once a promise and every promise it was resolved with have settled, any
+ * coroutine may call then(), otherwise(), or wait() on it. Create and finish an
+ * operation in one coroutine, then share its settled result.
+ *
  * @template TValue = mixed
  * @template TReason = mixed
  *
@@ -38,6 +54,9 @@ class Promise implements PromiseInterface
     /** @var list<array{0: PromiseInterface<mixed, mixed>, 1: callable|null, 2: callable|null}>|null */
     private ?array $handlers = [];
 
+    /** @var int Coroutine that created the promise, or -1 outside coroutines. */
+    private int $owner;
+
     /**
      * @param (callable(bool): void)|null $waitFn   Fn that when invoked resolves the promise.
      * @param (callable(): void)|null     $cancelFn Fn that when invoked cancels the promise.
@@ -48,6 +67,7 @@ class Promise implements PromiseInterface
     ) {
         $this->waitFn = $waitFn;
         $this->cancelFn = $cancelFn;
+        $this->owner = \Swoole\Coroutine::getCid();
     }
 
     /**
@@ -65,6 +85,10 @@ class Promise implements PromiseInterface
         ?callable $onFulfilled = null,
         ?callable $onRejected = null
     ): PromiseInterface {
+        if ($this->owner !== \Swoole\Coroutine::getCid() && self::unfinished($this) !== null) {
+            throw $this->foreignCall('then');
+        }
+
         if ($this->state === self::PENDING) {
             $p = new Promise(null, [$this, 'cancel']);
             $this->handlers[] = [$p, $onFulfilled, $onRejected];
@@ -106,6 +130,10 @@ class Promise implements PromiseInterface
 
     public function wait(bool $unwrap = true)
     {
+        if ($this->owner !== \Swoole\Coroutine::getCid() && self::unfinished($this) !== null) {
+            throw $this->foreignCall('wait');
+        }
+
         $this->waitIfPending();
 
         if ($this->result instanceof PromiseInterface) {
@@ -131,6 +159,10 @@ class Promise implements PromiseInterface
     {
         if ($this->state !== self::PENDING) {
             return;
+        }
+
+        if ($this->owner !== \Swoole\Coroutine::getCid()) {
+            throw $this->foreignCall('cancel');
         }
 
         $this->waitFn = $this->waitList = null;
@@ -176,6 +208,18 @@ class Promise implements PromiseInterface
 
         if ($value === $this) {
             throw new \LogicException('Cannot fulfill or reject a promise with itself');
+        }
+
+        // Check ownership before changing anything: the branches below merge
+        // handlers into a pending promise directly, or chain onto the value
+        // only after this promise has settled.
+        $coroutine = \Swoole\Coroutine::getCid();
+        if ($this->owner !== $coroutine) {
+            throw $this->foreignCall($state === self::FULFILLED ? 'resolve' : 'reject');
+        }
+        $adopted = self::unfinished($value);
+        if ($adopted instanceof self && $adopted->owner !== $coroutine) {
+            throw $adopted->foreignCall('adopt');
         }
 
         // Clear out the state of the promise but stash the handlers.
@@ -319,5 +363,67 @@ class Promise implements PromiseInterface
                 $result->wait(false);
             }
         }
+    }
+
+    /**
+     * Returns the promise whose owner must finish the given value, or null when
+     * it and every promise it was resolved with have settled. That is the
+     * pending Promise in the chain or, when the chain ends in a pending promise
+     * from another implementation, the last Promise before it.
+     *
+     * @param mixed $value
+     *
+     * @return PromiseInterface<mixed, mixed>|null
+     */
+    private static function unfinished($value): ?PromiseInterface
+    {
+        $last = null;
+
+        while (true) {
+            if ($value instanceof Coroutine) {
+                $value = $value->_getResult();
+            }
+
+            if (!$value instanceof self) {
+                if (!$value instanceof PromiseInterface || $value->getState() !== self::PENDING) {
+                    return null;
+                }
+
+                return $last ?? $value;
+            }
+
+            if ($value->state === self::PENDING) {
+                return $value;
+            }
+
+            $last = $value;
+            $value = $value->result;
+        }
+    }
+
+    /**
+     * @internal
+     *
+     * @param PromiseInterface<mixed, mixed> $promise
+     */
+    public static function _assertOwner(PromiseInterface $promise, string $method): void
+    {
+        if ($promise instanceof self && $promise->owner !== \Swoole\Coroutine::getCid()) {
+            throw $promise->foreignCall($method);
+        }
+    }
+
+    /**
+     * Creates the exception thrown when the current coroutine uses a pending
+     * promise that another coroutine owns.
+     */
+    private function foreignCall(string $method): \LogicException
+    {
+        return new \LogicException(\sprintf(
+            'Coroutine %d cannot %s an unfinished promise owned by coroutine %d. Create and finish the operation in the same coroutine, then share its settled result.',
+            \Swoole\Coroutine::getCid(),
+            $method === 'adopt' ? 'settle a promise with' : "call {$method}() on",
+            $this->owner
+        ));
     }
 }
