@@ -1,6 +1,6 @@
 # Promise API
 
-This reference summarizes the public API provided by `guzzlehttp/promises`.
+This reference summarizes the public API provided by `hypervel/guzzle-promises`.
 Promise APIs are documented for static analysis as
 `PromiseInterface<TValue, TReason>`. `TValue` is the fulfillment value type and
 `TReason` is the rejection reason type. This typing is PHPDoc-only and does not
@@ -161,7 +161,7 @@ $promise = Each::of($promises, $onFulfilled, $onRejected, ['concurrency' => 5]);
 - `EachPromise` is the configurable class behind `Each`; use it directly when you need `fulfilled`, `rejected`, and `concurrency` keys in one configuration array.
 
 The concurrency options limit lazy promise creation. For HTTP request
-concurrency, use `GuzzleHttp\Pool` from `guzzlehttp/guzzle`.
+concurrency, use `GuzzleHttp\Pool` from `hypervel/guzzle`.
 
 ## Coroutine
 

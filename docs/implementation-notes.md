@@ -1,10 +1,10 @@
 # Implementation Notes
 
 This document describes implementation details that explain observable behavior
-in `guzzlehttp/promises`, especially queue-based callback execution, iterative
-resolution, and why `Promise` also acts as the deferred value. Application code
-usually only needs the [Promise Quick Start](promise-quick-start.md) and
-[Promise API](promise-api.md).
+in `hypervel/guzzle-promises`, especially queue-based callback execution,
+iterative resolution, and why `Promise` also acts as the deferred value.
+Application code usually only needs the
+[Promise Quick Start](promise-quick-start.md) and [Promise API](promise-api.md).
 
 ## Iterative Resolution and Chaining
 
@@ -54,7 +54,8 @@ To do that without making handlers publicly mutable, `Promise` is also the
 deferred value. Promises of the same class can modify each other's private
 state, including handler ownership. This means a consumer that receives a
 `Promise` can also resolve or reject it, but it keeps chaining efficient and
-stack safe.
+stack safe. While the promise is pending, only the coroutine that created it may
+do so; see [Coroutine Ownership](promise-api.md#coroutine-ownership).
 
 ```php
 $promise = new Promise();
