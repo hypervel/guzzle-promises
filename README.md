@@ -1,5 +1,9 @@
 # Guzzle Promises
 
+This is Hypervel's fork of Guzzle Promises for Swoole coroutines. It replaces
+`guzzlehttp/promises` and adds coroutine ownership checks. See
+[Hypervel Fork](#hypervel-fork).
+
 `guzzlehttp/promises` is a small promise library used by Guzzle for asynchronous
 operations. It implements promise chaining, synchronous waiting, cancellation,
 and helpers for working with groups of promises.
@@ -9,19 +13,38 @@ Most application developers use this package through
 calling methods such as `requestAsync()`. Install this package directly when you
 need promise composition without the full HTTP client.
 
+## Hypervel Fork
+
+[Hypervel](https://hypervel.org) runs many Swoole coroutines in one long-lived
+PHP process, and a promise that one coroutine is still working on must not be
+waited on, chained onto, or settled by another. This fork adds:
+
+- **Coroutine ownership.** A pending `Promise` belongs to the coroutine that
+  created it, and calls from other coroutines throw a `LogicException` without
+  changing the promise. Settled results can be shared freely. See
+  [Coroutine Ownership](docs/promise-api.md#coroutine-ownership).
+- **Scoped task queues.** `ScopedTaskQueueInterface` lets a task queue that runs
+  per coroutine track pending work, such as HTTP transfers, and cancel it when
+  the coroutine ends. See [Task Queue](docs/promise-api.md#task-queue).
+
+> [!IMPORTANT]
+> This fork keeps upstream's public API. Once installed, it replaces
+> `guzzlehttp/promises` for packages with compatible version requirements,
+> including third-party packages and SDKs, so their existing code keeps working
+> unchanged. Changes to the fork must stay backward compatible.
+
 ## Installation
 
 ```bash
-composer require guzzlehttp/promises
+composer require hypervel/guzzle-promises
 ```
 
 ## Version Guidance
 
-| Version | Status       | PHP Version  |
-|---------|--------------|--------------|
-| 3.0     | Latest       | >=7.4,<8.7   |
-| 2.5     | Maintenance  | >=7.2.5,<8.7 |
-| 1.5     | End of Life  | >=5.5,<8.3   |
+This fork requires PHP 8.4 or newer and the Swoole extension.
+[composer.json](composer.json) lists the exact requirements. Each fork version
+is the upstream release it is based on plus a fork release number. For example,
+`3.0.2.1` is the first fork release based on upstream `3.0.2`.
 
 ## Quick Start
 
