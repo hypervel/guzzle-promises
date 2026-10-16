@@ -64,7 +64,9 @@
 ## Hypervel Fork
 
 This repository is Hypervel's fork of `guzzlehttp/promises`. These rules apply
-on top of the guidelines above.
+on top of the guidelines above and take precedence where they differ. The fork
+sections of the README and `UPGRADING.md` describe the fork; the rest of
+`UPGRADING.md` and `CHANGELOG.md` are upstream's history.
 
 > [!WARNING]
 > Preserve upstream's public API for supported versions. Composer installs this
@@ -84,12 +86,15 @@ on top of the guidelines above.
   that explains what changed and why. Record the full reasoning in the pull
   request.
 - Record fork-only changes in the pull request, the README's Hypervel Fork
-  section and the GitHub release notes. `CHANGELOG.md` stays upstream's, which
+  section and the GitHub release notes, and document required migration steps in
+  the fork section of `UPGRADING.md`. `CHANGELOG.md` stays upstream's, which
   overrides the changelog rule above for fork-only changes.
-- Run PHPUnit under PHP 8.4 or newer with Swoole, as CI does in the
-  `ghcr.io/hypervel/components-ci` image. Run PHPStan and PHP-CS-Fixer under PHP
-  7.4 as above, setting `COMPOSER_IGNORE_PLATFORM_REQ=php,ext-swoole` only when
-  installing the root package.
+- PHP 7.4 syntax is retained for the static tools; the fork's runtime
+  requirements are defined in `composer.json`. Run PHPUnit under PHP 8.4 or
+  newer with Swoole, as CI does in the `ghcr.io/hypervel/components-ci` image.
+  Run PHPStan and PHP-CS-Fixer under PHP 7.4 as above, setting
+  `COMPOSER_IGNORE_PLATFORM_REQ=php,ext-swoole` only when installing the root
+  package.
 - Sync upstream on a work branch with `git merge upstream/<branch>`, never a
   rebase, and keep the fork's intentional behavior when resolving conflicts.
   Before merging, run the fork's checks and the affected Hypervel components
