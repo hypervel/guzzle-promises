@@ -27,9 +27,9 @@ operation in one coroutine, then share its settled result. See
 #### Task Queues
 
 Promise callbacks settle promises in the coroutine that drains the task queue,
-so coroutine applications must assign a task queue with `Utils::queue()` that
-keeps a separate queue for each coroutine. Hypervel installs one when it boots.
-See [Task Queue](docs/promise-api.md#task-queue).
+so coroutine applications must pass `Utils::queue()` a task queue that keeps a
+separate queue for each coroutine. Hypervel installs one when it boots. See
+[Task Queue](docs/promise-api.md#task-queue).
 
 #### Promise Cycles
 
