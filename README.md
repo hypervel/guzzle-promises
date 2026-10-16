@@ -4,14 +4,14 @@ This is Hypervel's fork of Guzzle Promises for Swoole coroutines. It replaces
 `guzzlehttp/promises` and adds coroutine ownership checks. See
 [Hypervel Fork](#hypervel-fork).
 
-`guzzlehttp/promises` is a small promise library used by Guzzle for asynchronous
-operations. It implements promise chaining, synchronous waiting, cancellation,
-and helpers for working with groups of promises.
+`hypervel/guzzle-promises` is a small promise library used by Guzzle for
+asynchronous operations. It implements promise chaining, synchronous waiting,
+cancellation, and helpers for working with groups of promises.
 
-Most application developers use this package through
-[`guzzlehttp/guzzle`](https://github.com/guzzle/guzzle/blob/8.0/README.md) by
-calling methods such as `requestAsync()`. Install this package directly when you
-need promise composition without the full HTTP client.
+Most application developers use this package through Hypervel's Guzzle fork,
+[`hypervel/guzzle`](https://github.com/hypervel/guzzle), by calling methods such
+as `requestAsync()`. Install this package directly when you need promise
+composition without the full HTTP client.
 
 ## Hypervel Fork
 
@@ -101,25 +101,14 @@ $response = $promise->wait();
 
 ## Security
 
-If you discover a security vulnerability within this package, please send an
-email to security@tidelift.com. All security vulnerabilities will be promptly
-addressed. Please do not disclose security-related issues publicly until a fix
-has been announced. Please see
-[Security Policy](https://github.com/guzzle/promises/security/policy) for more
-information.
+If you discover a security vulnerability in this fork, please report it
+privately by emailing Albert Chen at
+[albert@hypervel.org](mailto:albert@hypervel.org). Please do not report security
+vulnerabilities through public GitHub issues or discussions. If it also affects
+`guzzlehttp/promises`, please report it upstream as well through their
+[Security Policy](https://github.com/guzzle/promises/security/policy).
 
 ## License
 
 Guzzle is made available under the MIT License (MIT). Please see
 [License File](LICENSE) for more information.
-
-## For Enterprise
-
-Available as part of the Tidelift Subscription
-
-The maintainers of Guzzle and thousands of other packages are working with
-Tidelift to deliver commercial support and maintenance for the open source
-dependencies you use to build your applications. Save time, reduce risk, and
-improve code health, while paying the maintainers of the exact dependencies you
-use.
-[Learn more.](https://tidelift.com/subscription/pkg/packagist-guzzlehttp-promises?utm_source=packagist-guzzlehttp-promises&utm_medium=referral&utm_campaign=enterprise&utm_term=repo)
