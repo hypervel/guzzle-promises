@@ -1,6 +1,42 @@
 Guzzle Promises Upgrade Guide
 =============================
 
+guzzlehttp/promises to hypervel/guzzle-promises
+-----------------------------------------------
+
+`hypervel/guzzle-promises` is Hypervel's fork of `guzzlehttp/promises` for
+Swoole coroutines. It keeps upstream's public API and replaces
+`guzzlehttp/promises` for packages with compatible version requirements. This
+section covers moving to the fork. The sections after it are upstream's upgrade
+notes for `guzzlehttp/promises` releases, and their PHP and dependency
+requirements describe upstream, not this fork.
+
+#### PHP Version and Dependencies
+
+This fork requires PHP 8.4 or newer and the Swoole extension.
+
+#### Coroutine Ownership
+
+A pending `Promise` belongs to the coroutine that created it. Calling `then()`,
+`otherwise()`, `wait()`, `cancel()`, `resolve()`, or `reject()` on it from
+another coroutine throws a `LogicException`, as does settling a promise with
+another coroutine's unfinished `Promise` or `Coroutine`. Create and finish an
+operation in one coroutine, then share its settled result. See
+[Coroutine Ownership](docs/promise-api.md#coroutine-ownership).
+
+#### Task Queues
+
+Promise callbacks settle promises in the coroutine that drains the task queue,
+so coroutine applications must assign a task queue with `Utils::queue()` that
+keeps a separate queue for each coroutine. Hypervel installs one when it boots.
+See [Task Queue](docs/promise-api.md#task-queue).
+
+#### Promise Cycles
+
+Resolving or rejecting a promise with a promise that was already resolved with
+it, such as `$b->resolve($a)` after `$a->resolve($b)`, throws a `LogicException`
+instead of creating a cycle.
+
 2.x to 3.0
 ----------
 
