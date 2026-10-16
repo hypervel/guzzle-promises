@@ -19,8 +19,6 @@ interface ScopedTaskQueueInterface extends TaskQueueInterface
 {
     /**
      * Tracks pending work started in the current scope.
-     *
-     * @param PromiseInterface<mixed, mixed> $promise
      */
     public function track(PromiseInterface $promise): void;
 }

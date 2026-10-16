@@ -408,8 +408,6 @@ class Promise implements PromiseInterface
 
     /**
      * @internal
-     *
-     * @param PromiseInterface<mixed, mixed> $promise
      */
     public static function _assertOwner(PromiseInterface $promise, string $method): void
     {
