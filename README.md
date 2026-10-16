@@ -20,8 +20,9 @@ PHP process, and a promise that one coroutine is still working on must not be
 waited on, chained onto, or settled by another. This fork adds:
 
 - **Coroutine ownership.** A pending `Promise` belongs to the coroutine that
-  created it, and calls from other coroutines throw a `LogicException` without
-  changing the promise. Settled results can be shared freely. See
+  created it. Other coroutines can't wait on, chain onto, cancel or settle it:
+  those calls throw a `LogicException` without changing the promise. Settled
+  results can be shared freely. See
   [Coroutine Ownership](docs/promise-api.md#coroutine-ownership).
 - **Scoped task queues.** `ScopedTaskQueueInterface` lets a task queue that runs
   per coroutine track pending work, such as HTTP transfers, and cancel it when
