@@ -77,11 +77,13 @@ sections of the README and `UPGRADING.md` describe the fork; the rest of
 
 - Keep fork changes minimal and in upstream's style so upstream updates merge
   cleanly.
-- Land every change, including upstream syncs, through a pull request from a
-  work branch into the tracked branch. The checkout also has an `upstream`
-  remote, so target `hypervel/guzzle-promises` explicitly in every `gh` command:
-  `--repo hypervel/guzzle-promises`, or `repos/hypervel/guzzle-promises/...` for
-  `gh api`. Merge with a merge commit, never a squash or rebase.
+- Land changes, including upstream syncs, through a pull request from a work
+  branch into the tracked branch, and merge with a merge commit, never a squash
+  or rebase. With the owner's approval, a trivial fix that needs no review may
+  instead be committed directly to the tracked branch. The checkout also has an
+  `upstream` remote, so target `hypervel/guzzle-promises` explicitly in every
+  `gh` command: `--repo hypervel/guzzle-promises`, or
+  `repos/hypervel/guzzle-promises/...` for `gh api`.
 - Split changes into coherent commits that stage whole files, each with a body
   that explains what changed and why. Record the full reasoning in the pull
   request.
@@ -101,8 +103,8 @@ sections of the README and `UPGRADING.md` describe the fork; the rest of
   test suites against the candidate through temporary Composer path
   repositories.
 - Never fetch or push upstream tags: keep `remote.upstream.tagOpt` set to
-  `--no-tags`, and push only work branches and fork tags.
-- Tag a release after every merge that changes the fork. If the merge includes a
-  new upstream release, tag `<that release>.1` (for example `3.0.3.1`);
-  otherwise increase the last number (for example `3.0.2.1` to `3.0.2.2`). List
-  the included upstream pull requests in the GitHub release.
+  `--no-tags`, and push only the fork's branches and tags.
+- Tag a release after every merge or direct commit that changes installed code.
+  If it includes a new upstream release, tag `<that release>.1` (for example
+  `3.0.3.1`); otherwise increase the last number (for example `3.0.2.1` to
+  `3.0.2.2`). List the included upstream pull requests in the GitHub release.
