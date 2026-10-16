@@ -165,6 +165,25 @@ class CoroutineTest extends TestCase
         $this->assertSame(3, $promise->wait());
     }
 
+    public function testCannotResolveWithItself(): void
+    {
+        $promise = new Promise();
+        $coroutine = Coroutine::of(function () use ($promise): \Generator {
+            yield $promise;
+        });
+
+        try {
+            $coroutine->resolve($coroutine);
+            $this->fail('Expected LogicException');
+        } catch (\LogicException $e) {
+            $this->assertSame('Cannot fulfill or reject a promise with a promise that depends on it', $e->getMessage());
+        }
+
+        $this->assertSame(PromiseInterface::PENDING, $coroutine->getState());
+        $promise->resolve('foo');
+        $this->assertSame('foo', $coroutine->wait());
+    }
+
     public function testForeignCoroutineCannotCancelCurrentPromise(): void
     {
         $yielded = new ThirdPartyPromise();

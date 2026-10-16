@@ -218,6 +218,11 @@ class Promise implements PromiseInterface
             throw $this->foreignCall($state === self::FULFILLED ? 'resolve' : 'reject');
         }
         $adopted = self::unfinished($value);
+        if ($adopted === $this) {
+            // The value's chain leads back here, so settling would create a
+            // cycle that waits and later settlements could never leave.
+            throw new \LogicException('Cannot fulfill or reject a promise with a promise that depends on it');
+        }
         if ($adopted instanceof self && $adopted->owner !== $coroutine) {
             throw $adopted->foreignCall('adopt');
         }

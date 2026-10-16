@@ -809,6 +809,35 @@ class PromiseTest extends TestCase
         $p->reject($p);
     }
 
+    public function testCannotResolveWithPromiseThatDependsOnIt(): void
+    {
+        $p = new Promise();
+        $p2 = new Promise();
+        $p->resolve($p2);
+
+        try {
+            $p2->resolve($p);
+            $this->fail('Expected LogicException');
+        } catch (\LogicException $e) {
+            $this->assertSame('Cannot fulfill or reject a promise with a promise that depends on it', $e->getMessage());
+        }
+
+        $this->assertTrue(P\Is::pending($p2));
+        $p2->resolve('foo');
+        $this->assertSame('foo', $p->wait());
+    }
+
+    public function testCannotRejectWithPromiseThatDependsOnIt(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('Cannot fulfill or reject a promise with a promise that depends on it');
+
+        $p = new Promise();
+        $p2 = new Promise();
+        $p->resolve($p2);
+        $p2->reject($p);
+    }
+
     public function testDoesNotBlowStackWhenWaitingOnNestedThens(): void
     {
         $inner = new Promise(function () use (&$inner): void {
