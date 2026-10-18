@@ -17,6 +17,11 @@ $config = (new PhpCsFixer\Config())
         'phpdoc_summary' => false,
         'phpdoc_to_comment' => false,
         'single_line_throw' => false,
+        // Keep upstream's comma formatting when running on PHP 8.4.
+        'trailing_comma_in_multiline' => [
+            'after_heredoc' => true,
+            'elements' => ['array_destructuring', 'arrays'],
+        ],
         'yoda_style' => false,
     ])
     ->setFinder(
