@@ -84,6 +84,10 @@ sections of the README and `UPGRADING.md` describe the fork; the rest of
   checks, then advance the fork's branch and publish a matching fork release.
   Routine updates need no further approval; breaking changes require owner
   approval.
+- Keep one branch per major version still needed by supported Hypervel releases.
+  When we update to a newer minor version, publish the new release and delete the
+  previous minor branch. Keep all release tags. Delete an older major version's
+  branch only when no supported Hypervel release needs it.
 - Land changes, including upstream syncs, through a pull request from a work
   branch into the tracked branch, and merge with a merge commit, never a squash
   or rebase. With the owner's approval, a trivial fix that needs no review may
