@@ -77,6 +77,13 @@ sections of the README and `UPGRADING.md` describe the fork; the rest of
 
 - Keep fork changes minimal and in upstream's style so upstream updates merge
   cleanly.
+- Incorporate useful, non-breaking upstream changes into the current fork
+  branch, including changes from unreleased upstream branches. Publish these
+  using the current upstream version plus an incremented fork release number.
+  When upstream tags a newer release, merge and reconcile its changes, run the
+  checks, then advance the fork's branch and publish a matching fork release.
+  Routine updates need no further approval; breaking changes require owner
+  approval.
 - Land changes, including upstream syncs, through a pull request from a work
   branch into the tracked branch, and merge with a merge commit, never a squash
   or rebase. With the owner's approval, a trivial fix that needs no review may
