@@ -12,22 +12,15 @@ jobs:
   phpstan:
     name: PHPStan
     runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/hypervel/components-ci:php8.4-swoole6.3.0-rc1
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '7.4'
-          coverage: none
-          extensions: mbstring
-
       - name: Download dependencies
         run: composer update --no-interaction --no-progress
-        env:
-          COMPOSER_IGNORE_PLATFORM_REQ: php,ext-swoole
 
       - name: Download PHPStan
         run: composer bin phpstan update --no-interaction --no-progress
@@ -38,22 +31,15 @@ jobs:
   php-cs-fixer:
     name: PHP-CS-Fixer
     runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/hypervel/components-ci:php8.4-swoole6.3.0-rc1
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '7.4'
-          coverage: none
-          extensions: mbstring
-
       - name: Download dependencies
         run: composer update --no-interaction --no-progress
-        env:
-          COMPOSER_IGNORE_PLATFORM_REQ: php,ext-swoole
 
       - name: Download PHP CS Fixer
         run: composer bin php-cs-fixer update --no-interaction --no-progress
@@ -64,18 +50,12 @@ jobs:
   composer-normalize:
     name: Composer Normalize
     runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/hypervel/components-ci:php8.4-swoole6.3.0-rc1
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '7.4'
-          coverage: none
-
       - name: Execute Composer Normalize
         run: make static-composer-normalize-check
-        env:
-          COMPOSER_IGNORE_PLATFORM_REQ: php,ext-swoole

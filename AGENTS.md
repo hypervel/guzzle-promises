@@ -98,12 +98,12 @@ sections of the README and `UPGRADING.md` describe the fork; the rest of
   section and the GitHub release notes, and document required migration steps in
   the fork section of `UPGRADING.md`. `CHANGELOG.md` stays upstream's, which
   overrides the changelog rule above for fork-only changes.
-- PHP 7.4 syntax is retained for the static tools; the fork's runtime
-  requirements are defined in `composer.json`. Run PHPUnit under PHP 8.4 or
-  newer with Swoole, as CI does in the `ghcr.io/hypervel/components-ci` image.
-  Run PHPStan and PHP-CS-Fixer under PHP 7.4 as above, setting
-  `COMPOSER_IGNORE_PLATFORM_REQ=php,ext-swoole` only when installing the root
-  package.
+- The inherited PHP 7.4 tooling and compatibility requirements do not apply;
+  runtime requirements are defined in `composer.json`. Run static tools under
+  PHP 8.4 with Swoole installed, and tests under the PHP versions in CI with
+  Swoole. CI uses the `ghcr.io/hypervel/components-ci` image. Preserve upstream's
+  source style and formatting, including attribute placement and parameter
+  commas; avoid unrelated syntax modernization.
 - Sync upstream on a work branch with `git merge upstream/<branch>`, never a
   rebase, and keep the fork's intentional behavior when resolving conflicts.
   Before merging, run the fork's checks and the affected Hypervel components
