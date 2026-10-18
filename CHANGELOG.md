@@ -6,6 +6,17 @@ fork are listed in its
 README's [Hypervel Fork](README.md#hypervel-fork) section.
 
 
+## 3.1.0 - 2026-10-18
+
+### Added
+
+- Added `State` promise state checks as a replacement for `Is`
+
+### Deprecated
+
+- Deprecated `Is` because PHP 8.6 deprecates `is` as a class name
+
+
 ## 3.0.2 - 2026-08-24
 
 ### Added

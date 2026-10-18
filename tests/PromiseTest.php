@@ -44,7 +44,7 @@ class PromiseTest extends TestCase
         $p = new Promise();
         $p->resolve();
 
-        $this->assertTrue(P\Is::fulfilled($p));
+        $this->assertTrue(P\State::isFulfilled($p));
         $this->assertNull($p->wait());
     }
 
@@ -73,7 +73,7 @@ class PromiseTest extends TestCase
         $p = new Promise();
         $p->reject('foo');
         $p->reject('foo');
-        $this->assertTrue(P\Is::rejected($p));
+        $this->assertTrue(P\State::isRejected($p));
     }
 
     public function testCannotRejectResolveWithSameValue(): void
@@ -146,9 +146,9 @@ class PromiseTest extends TestCase
         $p = new Promise(function () use (&$p): void {
             $p->reject('foo');
         });
-        $this->assertTrue(P\Is::pending($p));
+        $this->assertTrue(P\State::isPending($p));
         $p->wait(false);
-        $this->assertTrue(P\Is::rejected($p));
+        $this->assertTrue(P\State::isRejected($p));
     }
 
     public function testRejectsSelfWhenWaitThrows(): void
@@ -161,7 +161,7 @@ class PromiseTest extends TestCase
             $p->wait();
             $this->fail();
         } catch (\UnexpectedValueException $e) {
-            $this->assertTrue(P\Is::rejected($p));
+            $this->assertTrue(P\State::isRejected($p));
         }
     }
 
@@ -177,7 +177,7 @@ class PromiseTest extends TestCase
             $this->fail('Expected Error');
         } catch (\Error $e) {
             $this->assertSame($error, $e);
-            $this->assertTrue(P\Is::rejected($p));
+            $this->assertTrue(P\State::isRejected($p));
         }
     }
 
@@ -258,7 +258,7 @@ class PromiseTest extends TestCase
             $p->resolve($p2);
         });
         $p->wait(false);
-        $this->assertTrue(P\Is::rejected($p2));
+        $this->assertTrue(P\State::isRejected($p2));
     }
 
     public function testCannotCancelNonPending(): void
@@ -266,7 +266,7 @@ class PromiseTest extends TestCase
         $p = new Promise();
         $p->resolve('foo');
         $p->cancel();
-        $this->assertTrue(P\Is::fulfilled($p));
+        $this->assertTrue(P\State::isFulfilled($p));
     }
 
     public function testCancelsPromiseWhenNoCancelFunction(): void
@@ -275,7 +275,7 @@ class PromiseTest extends TestCase
 
         $p = new Promise();
         $p->cancel();
-        $this->assertTrue(P\Is::rejected($p));
+        $this->assertTrue(P\State::isRejected($p));
         $p->wait();
     }
 
@@ -286,7 +286,7 @@ class PromiseTest extends TestCase
             $called = true;
         });
         $p->cancel();
-        $this->assertTrue(P\Is::rejected($p));
+        $this->assertTrue(P\State::isRejected($p));
         $this->assertTrue($called);
     }
 
@@ -300,10 +300,10 @@ class PromiseTest extends TestCase
         $p3 = $p2->then(function (): void {});
         $p4 = $p3->then(function (): void {});
         $p3->cancel();
-        $this->assertTrue(P\Is::rejected($p1));
-        $this->assertTrue(P\Is::rejected($p2));
-        $this->assertTrue(P\Is::rejected($p3));
-        $this->assertTrue(P\Is::pending($p4));
+        $this->assertTrue(P\State::isRejected($p1));
+        $this->assertTrue(P\State::isRejected($p2));
+        $this->assertTrue(P\State::isRejected($p3));
+        $this->assertTrue(P\State::isPending($p4));
         $this->assertTrue($called);
 
         try {
@@ -320,7 +320,7 @@ class PromiseTest extends TestCase
             $this->assertStringContainsString('cancelled', $e->getMessage());
         }
 
-        $this->assertTrue(P\Is::rejected($p4));
+        $this->assertTrue(P\State::isRejected($p4));
     }
 
     public function testCancelsChildPromises(): void
@@ -342,11 +342,11 @@ class PromiseTest extends TestCase
             $this->fail();
         });
         $p4->cancel();
-        $this->assertTrue(P\Is::pending($p1));
-        $this->assertTrue(P\Is::rejected($p2));
-        $this->assertTrue(P\Is::pending($p3));
-        $this->assertTrue(P\Is::rejected($p4));
-        $this->assertTrue(P\Is::pending($p5));
+        $this->assertTrue(P\State::isPending($p1));
+        $this->assertTrue(P\State::isRejected($p2));
+        $this->assertTrue(P\State::isPending($p3));
+        $this->assertTrue(P\State::isRejected($p4));
+        $this->assertTrue(P\State::isPending($p5));
         $this->assertFalse($called1);
         $this->assertTrue($called2);
         $this->assertFalse($called3);
@@ -360,7 +360,7 @@ class PromiseTest extends TestCase
             throw new \Exception('e');
         });
         $p->cancel();
-        $this->assertTrue(P\Is::rejected($p));
+        $this->assertTrue(P\State::isRejected($p));
         $this->assertTrue($called);
         try {
             $p->wait();
@@ -822,7 +822,7 @@ class PromiseTest extends TestCase
             $this->assertSame('Cannot fulfill or reject a promise with a promise that depends on it', $e->getMessage());
         }
 
-        $this->assertTrue(P\Is::pending($p2));
+        $this->assertTrue(P\State::isPending($p2));
         $p2->resolve('foo');
         $this->assertSame('foo', $p->wait());
     }
@@ -1068,7 +1068,7 @@ class PromiseTest extends TestCase
                 }
 
                 $pendingHandlers = PropertyHelper::get($pending, 'handlers');
-                $stillPending = P\Is::pending($p);
+                $stillPending = P\State::isPending($p);
                 $p->resolve('foo');
                 $result = $chained->wait();
             });
@@ -1105,7 +1105,7 @@ class PromiseTest extends TestCase
                     $exception = $e;
                 }
 
-                $stillPending = P\Is::pending($p);
+                $stillPending = P\State::isPending($p);
                 $p->resolve('foo');
                 $result = $chained->wait();
             });
@@ -1218,7 +1218,7 @@ class PromiseTest extends TestCase
 
         $this->assertInstanceOf(\LogicException::class, $exception);
         $this->assertStringContainsString('cannot call resolve() on an unfinished promise owned by coroutine -1', $exception->getMessage());
-        $this->assertTrue(P\Is::pending($p));
+        $this->assertTrue(P\State::isPending($p));
         $p->resolve('bar');
         $this->assertSame('bar', $p->wait());
     }
