@@ -77,12 +77,13 @@ sections of the README and `UPGRADING.md` describe the fork; the rest of
 
 - Keep fork changes minimal and in upstream's style so upstream updates merge
   cleanly.
-- Incorporate useful, non-breaking upstream changes into the current fork
-  branch, including changes from unreleased upstream branches. Publish these
-  using the current upstream version plus an incremented fork release number.
-  When upstream tags a newer release, merge and reconcile its changes, run the
-  checks, then advance the fork's branch and publish a matching fork release.
-  Routine updates need no further approval; breaking changes require owner
+- Track the branch for the latest stable upstream release and merge its updates
+  in full, preserving the fork’s intentional differences. Do not pull changes
+  from newer, unreleased version branches. Publish updates using the current
+  upstream version plus an incremented fork release number. When upstream
+  releases a newer version, move to that version’s branch, reconcile and verify
+  its changes, and publish a matching fork release.
+- Routine updates need no further approval; breaking changes require owner
   approval.
 - Keep one branch per major version still needed by supported Hypervel releases.
   When we update to a newer minor version, publish the new release and delete the
