@@ -77,12 +77,14 @@ sections of the README and `UPGRADING.md` describe the fork; the rest of
 
 - Keep fork changes minimal and in upstream's style so upstream updates merge
   cleanly.
-- Track the branch for the latest stable upstream release and merge its updates
-  in full, preserving the fork’s intentional differences. Do not pull changes
-  from newer, unreleased version branches. Publish updates using the current
-  upstream version plus an incremented fork release number. When upstream
-  releases a newer version, move to that version’s branch, reconcile and verify
-  its changes, and publish a matching fork release.
+- Track the latest stable upstream release. Sync when a new stable release is
+  available, merging all changes through its release commit and preserving the
+  fork's intentional differences. Do not routinely sync unreleased branch
+  commits. Urgent fixes on the tracked upstream branch and fork-only fixes may
+  be released between upstream releases. Do not pull changes from newer,
+  unreleased version branches. When a release uses a newer upstream branch,
+  move to that branch, reconcile and verify its changes, and publish a matching
+  fork release.
 - Routine updates need no further approval; breaking changes require owner
   approval.
 - Keep one branch per major version still needed by supported Hypervel releases.
@@ -104,19 +106,29 @@ sections of the README and `UPGRADING.md` describe the fork; the rest of
   the fork section of `UPGRADING.md`. `CHANGELOG.md` stays upstream's, which
   overrides the changelog rule above for fork-only changes.
 - The inherited PHP 7.4 tooling and compatibility requirements do not apply;
-  runtime requirements are defined in `composer.json`. Run static tools under
-  PHP 8.4 with Swoole installed, and tests under the PHP versions in CI with
-  Swoole. CI uses the `ghcr.io/hypervel/components-ci` image. Preserve upstream's
+  runtime requirements are defined in `composer.json`. Preserve upstream's
   source style and formatting, including attribute placement and parameter
   commas; avoid unrelated syntax modernization.
-- Sync upstream on a work branch with `git merge upstream/<branch>`, never a
-  rebase, and keep the fork's intentional behavior when resolving conflicts.
-  Before merging, run the fork's checks and the affected Hypervel components
-  test suites against the candidate through temporary Composer path
-  repositories.
+- Sync upstream on a work branch with `git merge <upstream-release-commit>`,
+  never a rebase. Review the full upstream diff since the previous sync and the
+  resulting fork diff; keep the fork's intentional behavior when resolving
+  conflicts.
+- Run the fork's static checks and relevant unit tests using the existing local
+  environment, then push the pull request branch. Use the `gh` CLI to monitor
+  CI and inspect failure logs. CI runs the full suite, including integration
+  tests, and the supported PHP-version and dependency matrix; do not recreate
+  it locally. Fix failures, rerun affected local checks and push again until CI
+  passes. Reuse passing local results unless subsequent changes invalidate them.
+  Merge only after review is complete and required CI checks pass. If the base
+  changes after testing, update the pull request and validate it again before
+  merging.
 - Never fetch or push upstream tags: keep `remote.upstream.tagOpt` set to
   `--no-tags`, and push only the fork's branches and tags.
 - Tag a release after every merge or direct commit that changes installed code.
   If it includes a new upstream release, tag `<that release>.1` (for example
   `3.0.3.1`); otherwise increase the last number (for example `3.0.2.1` to
   `3.0.2.2`). List the included upstream pull requests in the GitHub release.
+- After publishing, update the consuming Hypervel projects to the fork release
+  with Composer and run the relevant Hypervel tests. If consumer testing exposes
+  a fork bug, fix it and publish a follow-up release, then update and retest
+  before proceeding with the Hypervel changes.
