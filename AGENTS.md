@@ -77,6 +77,9 @@ sections of the README and `UPGRADING.md` describe the fork; the rest of
 
 - Keep fork changes minimal and in upstream's style so upstream updates merge
   cleanly.
+- Fix confirmed upstream bugs that warrant correction in the fork. Add a concise
+  code comment explaining why the fix differs from upstream. Do not open an
+  upstream pull request unless the owner asks.
 - Track the latest stable upstream release. Sync when a new stable release is
   available, merging all changes through its release commit and preserving the
   fork's intentional differences. Do not routinely sync unreleased branch
@@ -113,6 +116,9 @@ sections of the README and `UPGRADING.md` describe the fork; the rest of
   never a rebase. Review the full upstream diff since the previous sync and the
   resulting fork diff; keep the fork's intentional behavior when resolving
   conflicts.
+  When upstream merges a fix the fork already carries, reconcile the fork's copy
+  with upstream's final version, keep the fork's own changes on top of it, and
+  remove only the code it supersedes.
 - Run the fork's static checks and relevant unit tests using the existing local
   environment, then push the pull request branch. Use the `gh` CLI to monitor
   CI and inspect failure logs. CI runs the full suite, including integration
