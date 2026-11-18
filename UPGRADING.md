@@ -13,7 +13,7 @@ requirements describe upstream, not this fork.
 
 #### PHP Version and Dependencies
 
-This fork requires PHP 8.4 or newer and the Swoole extension.
+This fork requires PHP 8.4 or newer and Swoole 6.3.0 RC2 or a later 6.x release.
 
 #### Coroutine Ownership
 

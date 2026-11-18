@@ -112,6 +112,8 @@ sections of the README and `UPGRADING.md` describe the fork; the rest of
   runtime requirements are defined in `composer.json`. Preserve upstream's
   source style and formatting, including attribute placement and parameter
   commas; avoid unrelated syntax modernization.
+- Match this fork’s `require.ext-swoole` constraint to the one in the root
+  `composer.json` of the `hypervel/components` version this branch supports.
 - Sync upstream on a work branch with `git merge <upstream-release-commit>`,
   never a rebase. Review the full upstream diff since the previous sync and the
   resulting fork diff; keep the fork's intentional behavior when resolving

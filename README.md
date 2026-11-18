@@ -42,7 +42,7 @@ composer require hypervel/guzzle-promises
 
 ## Version Guidance
 
-This fork requires PHP 8.4 or newer and the Swoole extension.
+This fork requires PHP 8.4 or newer and Swoole 6.3.0 RC2 or a later 6.x release.
 [composer.json](composer.json) lists the exact requirements. Each fork version
 is the upstream release it is based on plus a fork release number. For example,
 `3.0.2.1` is the first fork release based on upstream `3.0.2`.
