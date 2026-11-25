@@ -121,15 +121,16 @@ sections of the README and `UPGRADING.md` describe the fork; the rest of
   When upstream merges a fix the fork already carries, reconcile the fork's copy
   with upstream's final version, keep the fork's own changes on top of it, and
   remove only the code it supersedes.
-- Run the fork's static checks and relevant unit tests using the existing local
-  environment, then push the pull request branch. Use the `gh` CLI to monitor
-  CI and inspect failure logs. CI runs the full suite, including integration
-  tests, and the supported PHP-version and dependency matrix; do not recreate
-  it locally. Fix failures, rerun affected local checks and push again until CI
-  passes. Reuse passing local results unless subsequent changes invalidate them.
-  Merge only after review is complete and required CI checks pass. If the base
-  changes after testing, update the pull request and validate it again before
-  merging.
+- Run the fork's static checks and use `vendor/bin/phpunit <path>` for tests
+  covering the changed behavior and affected callers, then push the pull request
+  branch. During syncs, do not run `make test` locally. Use the `gh` CLI to
+  monitor CI and inspect failure logs. CI runs the full suite, including
+  integration tests, and the supported PHP-version and dependency matrix; do not
+  recreate it locally. Fix failures, rerun affected local checks and push again
+  until CI passes. Reuse passing local results unless subsequent changes
+  invalidate them. Merge only after review is complete and required CI checks
+  pass. If the base changes after testing, update the pull request and validate
+  it again before merging.
 - Never fetch or push upstream tags: keep `remote.upstream.tagOpt` set to
   `--no-tags`, and push only the fork's branches and tags.
 - Tag a release after every merge or direct commit that changes installed code.
