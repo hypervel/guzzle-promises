@@ -33,7 +33,27 @@ final class Create
             $wfn = method_exists($value, 'wait') ? [$value, 'wait'] : null;
             $cfn = method_exists($value, 'cancel') ? [$value, 'cancel'] : null;
             $promise = new Promise($wfn, $cfn);
-            $value->then([$promise, 'resolve'], [$promise, 'reject']);
+            // Unlike upstream, ignore calls after the first, as Promises/A+
+            // requires. The thenable may keep the callbacks after then()
+            // throws, and settling the promise again would throw from
+            // whatever runs the late call, such as the task queue.
+            $resolve = static function ($value = null) use ($promise): void {
+                if (State::isPending($promise)) {
+                    $promise->resolve($value);
+                }
+            };
+            $reject = static function ($reason) use ($promise): void {
+                if (State::isPending($promise)) {
+                    $promise->reject($reason);
+                }
+            };
+            try {
+                $value->then($resolve, $reject);
+            } catch (\Throwable $e) {
+                if (State::isPending($promise)) {
+                    $promise->reject($e);
+                }
+            }
 
             return $promise;
         }
