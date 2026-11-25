@@ -6,6 +6,31 @@ fork are listed in its
 README's [Hypervel Fork](README.md#hypervel-fork) section.
 
 
+## 3.2.0 - 2026-11-21
+
+### Changed
+
+- Changed `Coroutine` to forward cancellation from chained promises
+- Changed `TaskQueue` to remove tasks in constant time
+
+
+## 3.1.2 - 2026-11-21
+
+### Fixed
+
+- Fixed `LogicException` when a callback settles its own promise
+
+
+## 3.1.1 - 2026-11-19
+
+### Fixed
+
+- Fixed `Promise` losing its handlers when a thenable's `then()` throws
+- Fixed `Create::promiseFor()` throwing when a thenable's `then()` throws
+- Fixed quadratic handler forwarding through chains of pending promises
+- Fixed `Utils::inspect()` losing the outcome of a chained promise
+
+
 ## 3.1.0 - 2026-10-18
 
 ### Added

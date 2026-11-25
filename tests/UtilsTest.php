@@ -660,6 +660,20 @@ class UtilsTest extends TestCase
         $this->assertSame('inner', $result['reason']);
     }
 
+    public function testInspectReturnsOutcomeOfChainedPromiseWhoseWaitFunctionThrowsAfterSettling(): void
+    {
+        $p = new Promise(function () use (&$p): void {
+            $p->resolve('foo');
+
+            throw new \RuntimeException('bar');
+        });
+
+        $this->assertSame([
+            'state' => 'fulfilled',
+            'value' => 'foo',
+        ], P\Utils::inspect($p->then()));
+    }
+
     public function testReturnsTrampoline(): void
     {
         $this->assertInstanceOf(TaskQueue::class, P\Utils::queue());
@@ -1073,6 +1087,17 @@ class UtilsTest extends TestCase
         $reason = P\Utils::inspect($promise)['reason'];
         $this->assertInstanceOf(\OutOfBoundsException::class, $reason);
         $this->assertInstanceOf(RejectionException::class, $reason->getPrevious());
+    }
+
+    public function testIgnoresResultOfTaskThatCancelsItsPromise(): void
+    {
+        $p = P\Utils::task(function () use (&$p): string {
+            $p->cancel();
+
+            return 'a';
+        });
+        P\Utils::queue()->run();
+        $this->assertTrue(P\State::isRejected($p));
     }
 
     public function testCanManuallySettleTaskQueueGeneratedPromises(): void
