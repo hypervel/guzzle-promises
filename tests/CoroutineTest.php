@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace GuzzleHttp\Promise\Tests;
 
+use GuzzleHttp\Promise\CancellationException;
 use GuzzleHttp\Promise\Coroutine;
 use GuzzleHttp\Promise\FulfilledPromise;
 use GuzzleHttp\Promise\Promise;
@@ -225,6 +226,86 @@ class CoroutineTest extends TestCase
         $coroutine->cancel();
 
         $this->assertSame(1, $current->cancelCalls);
+        $this->assertSame(PromiseInterface::REJECTED, $coroutine->getState());
+    }
+
+    public function testFailedCancelLeavesCoroutinePendingForRetry(): void
+    {
+        $failure = new \RuntimeException('foo');
+        $calls = 0;
+        $yielded = $this->createMock(PromiseInterface::class);
+        $yielded->method('then')->willReturnSelf();
+        $yielded->expects($this->exactly(2))
+            ->method('cancel')
+            ->willReturnCallback(function () use (&$calls, $failure): void {
+                if (++$calls === 1) {
+                    throw $failure;
+                }
+            });
+        $coroutine = Coroutine::of(function () use ($yielded): \Generator {
+            yield $yielded;
+        });
+
+        try {
+            $coroutine->cancel();
+            $this->fail('Expected RuntimeException');
+        } catch (\RuntimeException $e) {
+            $this->assertSame($failure, $e);
+        }
+
+        $this->assertSame(PromiseInterface::PENDING, $coroutine->getState());
+
+        $coroutine->cancel();
+
+        $this->assertSame(PromiseInterface::REJECTED, $coroutine->getState());
+    }
+
+    public function testLaterCancelStillCancelsPendingCurrentPromise(): void
+    {
+        $yielded = $this->createMock(PromiseInterface::class);
+        $yielded->method('then')->willReturnSelf();
+        $yielded->expects($this->exactly(2))->method('cancel');
+        $coroutine = Coroutine::of(function () use ($yielded): \Generator {
+            yield $yielded;
+        });
+
+        $coroutine->cancel();
+        $this->assertSame(PromiseInterface::REJECTED, $coroutine->getState());
+
+        $coroutine->cancel();
+    }
+
+    public function testCancelsPromiseYieldedWhileCancellingCurrentPromise(): void
+    {
+        $onRejected = null;
+        $yielded = $this->createMock(PromiseInterface::class);
+        $yielded->method('then')
+            ->willReturnCallback(function (?callable $onFulfilled, ?callable $onRejectedCallback) use (&$onRejected, $yielded): PromiseInterface {
+                $onRejected = $onRejectedCallback;
+
+                return $yielded;
+            });
+        $yielded->expects($this->once())
+            ->method('cancel')
+            ->willReturnCallback(function () use (&$onRejected): void {
+                $onRejected(new CancellationException('Promise has been cancelled'));
+            });
+        $called = false;
+        $next = new Promise(null, function () use (&$called): void {
+            $called = true;
+        });
+        $coroutine = Coroutine::of(function () use ($yielded, $next): \Generator {
+            try {
+                yield $yielded;
+            } catch (CancellationException $e) {
+                yield $next;
+            }
+        });
+
+        $coroutine->cancel();
+
+        $this->assertTrue($called);
+        $this->assertSame(PromiseInterface::REJECTED, $next->getState());
         $this->assertSame(PromiseInterface::REJECTED, $coroutine->getState());
     }
 }

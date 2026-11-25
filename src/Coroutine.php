@@ -63,6 +63,11 @@ final class Coroutine implements PromiseInterface
     private PromiseInterface $result;
 
     /**
+     * Whether cancelling the result still has to cancel the current promise.
+     */
+    private bool $forwardCancel = true;
+
+    /**
      * @param callable(): Generator<mixed, mixed, mixed, mixed> $generatorFn
      */
     public function __construct(callable $generatorFn)
@@ -73,7 +78,7 @@ final class Coroutine implements PromiseInterface
                 $this->currentPromise->wait();
             }
         }, function (): void {
-            if (isset($this->currentPromise)) {
+            if ($this->forwardCancel && isset($this->currentPromise)) {
                 $this->currentPromise->cancel();
             }
         });
@@ -153,7 +158,11 @@ final class Coroutine implements PromiseInterface
             // The current promise may come from another library, so refuse
             // another coroutine before it cancels anything.
             Promise::_assertOwner($this->result, 'cancel');
-            $this->currentPromise->cancel();
+            $current = $this->currentPromise;
+            $current->cancel();
+            // Upstream lets the result's cancel function below cancel the same
+            // promise a second time; it only needs to cancel a new one.
+            $this->forwardCancel = $this->currentPromise !== $current;
         }
 
         $this->result->cancel();
