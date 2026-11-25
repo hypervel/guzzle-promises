@@ -59,16 +59,22 @@ class CreateTest extends TestCase
         $thenable = new class {
             public function then(?callable $onFulfilled = null, ?callable $onRejected = null): void
             {
-                P\Utils::queue()->add(function () use ($onFulfilled): void {
+                P\Utils::queue()->add(function () use ($onFulfilled, $onRejected): void {
                     $onFulfilled('bar');
+                    $onRejected('baz');
                 });
 
                 throw new \RuntimeException('foo');
             }
         };
 
+        $ran = false;
         $p = P\Create::promiseFor($thenable);
+        P\Utils::queue()->add(function () use (&$ran): void {
+            $ran = true;
+        });
         P\Utils::queue()->run();
+        $this->assertTrue($ran);
         $this->assertTrue(P\State::isRejected($p));
 
         $this->expectException(\RuntimeException::class);
@@ -89,6 +95,20 @@ class CreateTest extends TestCase
         };
 
         $this->assertSame('foo', P\Create::promiseFor($thenable)->wait());
+    }
+
+    public function testFulfillsPromiseForThenableThatFulfillsWithoutValue(): void
+    {
+        $thenable = new class {
+            public function then(?callable $onFulfilled = null, ?callable $onRejected = null): void
+            {
+                $onFulfilled();
+            }
+        };
+
+        $p = P\Create::promiseFor($thenable);
+        $this->assertTrue(P\State::isFulfilled($p));
+        $this->assertNull($p->wait());
     }
 
     public function testReturnsRejection(): void

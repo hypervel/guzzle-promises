@@ -30,7 +30,9 @@ waited on, chained onto, or settled by another. This fork adds:
 - **Fixes not in upstream.** Resolving a promise with a promise that was already
   resolved with it throws a `LogicException` instead of creating a cycle. A
   single call to `Coroutine::cancel()` forwards cancellation to the current
-  promise once.
+  promise once. A promise from `Create::promiseFor()` ignores a foreign
+  thenable's calls after the first, as Promises/A+ requires, including calls it
+  makes after its `then()` throws.
 
 > [!IMPORTANT]
 > This fork keeps upstream's public API. Once installed, it replaces
